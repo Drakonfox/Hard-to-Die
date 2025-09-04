@@ -1,0 +1,5 @@
+{
+  "name": "Hard to Die",
+  "description": "A roguelike game where the objective is to kill your own character before time runs out, while healers try to keep you alive. Use various self-damaging abilities with cooldowns to counteract the healing and achieve your goal.",
+  "requestFramePermissions": []
+}
