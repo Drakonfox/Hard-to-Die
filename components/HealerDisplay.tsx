@@ -40,7 +40,7 @@ const HealerDisplay: React.FC<HealerDisplayProps> = ({ healers }) => {
                 </div>
               </div>
 
-              {isStunned && (
+              {!!isStunned && (
                   <div className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center z-10 rounded-lg backdrop-blur-sm">
                       <p className="text-5xl animate-pulse">😵</p>
                       <p className="text-2xl font-bold text-yellow-300 mt-2">STUNNED</p>
