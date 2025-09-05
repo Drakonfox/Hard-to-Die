@@ -218,7 +218,7 @@ export class GameStore {
         if (levelNumber === 1) {
             healersForLevel.push({
                 id: 'acolyte', name: 'Apprendista Guaritore', icon: '🧑‍⚕️', maxHp: 100,
-                abilities: [ { id: 'acolyte-mend', name: 'Cura Debole', icon: '🩹', cooldown: 8, timeToNextUse: 4, healAmount: 8 } ],
+                abilities: [ { id: 'acolyte-mend', name: 'Cura Debole', icon: '🩹', cooldown: 5, timeToNextUse: 4, healAmount: 10 } ],
                 stunTimer: 0
             });
         } else if (levelNumber === 2) {

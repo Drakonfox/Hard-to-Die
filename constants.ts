@@ -24,7 +24,7 @@ export const RARITY_DATA: Record<Rarity, {
 export const DIFFICULTY_MODIFIERS: Record<Difficulty, { description: string; healerCdModifier: number; playerDamageModifier: number }> = {
   'Easy': {
     description: "A gentle introduction to the art of dying. Healers are a bit slow.",
-    healerCdModifier: 1.25,
+    healerCdModifier: 1.20,
     playerDamageModifier: 1.1,
   },
   'Medium': {
@@ -35,7 +35,7 @@ export const DIFFICULTY_MODIFIERS: Record<Difficulty, { description: string; hea
   'Hard': {
     description: "You're in for a world of hurt. Or, a world of not-hurt, which is worse. Good luck.",
     healerCdModifier: 0.8,
-    playerDamageModifier: 0.9,
+    playerDamageModifier: 0.8,
   }
 };
 
@@ -45,7 +45,7 @@ export const ALL_PLAYER_ACTIONS: PlayerAction[] = [
         name: 'Tirarsi uno schiaffo',
         description: 'Un gesto patetico ma efficace. Danno basso, cooldown rapido.',
         icon: '👋',
-        damage: 10,
+        damage: 5,
         cooldown: 1,
         instabilityGain: 5,
         minLevel: 1,
@@ -57,12 +57,12 @@ export const ALL_PLAYER_ACTIONS: PlayerAction[] = [
         name: 'Testata sul Muro',
         description: 'Molto stupido, ma fa un male cane. Danno elevato, ma ti stordisce leggermente.',
         icon: '🧱',
-        damage: 45,
-        cooldown: 11,
-        instabilityGain: 15,
+        damage: 25,
+        cooldown: 10,
+        instabilityGain: 20,
         stunDuration: 1.8,
         minLevel: 1,
-        baseCost: 110,
+        baseCost: 120,
         rarity: 'Uncommon',
     },
     {
@@ -71,12 +71,12 @@ export const ALL_PLAYER_ACTIONS: PlayerAction[] = [
         description: 'Un potente e duraturo veleno. Lento ad agire, ma letale.',
         icon: '🤢',
         damage: 0,
-        cooldown: 18,
+        cooldown: 15,
         instabilityGain: 10,
         dot: {
             id: 'food_poisoning_dot',
             damage: 8,
-            duration: 15,
+            duration: 10,
             icon: '🤢'
         },
         minLevel: 2,
@@ -98,7 +98,7 @@ export const ALL_PLAYER_ACTIONS: PlayerAction[] = [
             icon: '🔮'
         },
         minLevel: 2,
-        baseCost: 180,
+        baseCost: 200,
         rarity: 'Rare',
     },
     {
@@ -106,7 +106,7 @@ export const ALL_PLAYER_ACTIONS: PlayerAction[] = [
         name: 'Rabbia Incontrollata',
         description: 'Scatena una furia distruttiva, infliggendoti danni massicci ma aumentando l\'instabilità a dismisura. Costoso, ma spettacolare.',
         icon: '😡',
-        damage: 85,
+        damage: 50,
         cooldown: 30,
         instabilityGain: 40,
         minLevel: 3,
