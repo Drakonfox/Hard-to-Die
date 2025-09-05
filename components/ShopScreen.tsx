@@ -2,7 +2,7 @@ import React from 'react';
 import { observer } from 'mobx-react-lite';
 import type { GameStore } from '../store';
 import { ShopItem, ShopItemCategory, PlayerAction } from '../types';
-import { MAX_CONSUMABLES, RARITY_DATA } from '../constants';
+import { MAX_CONSUMABLES, RARITY_DATA, REROLL_COST } from '../constants';
 
 interface ShopScreenProps {
   store: GameStore;
@@ -140,8 +140,16 @@ const ShopScreen: React.FC<ShopScreenProps> = observer(({ store }) => {
         <h1 className="text-6xl font-bold text-yellow-400 mb-4">Il Negozio della Sofferenza</h1>
         <p className="text-xl text-slate-300 mb-8">Spendi i tuoi Punti Rabbia (PR) per sbloccare nuovi modi di morire.</p>
         
-        <div className="p-4 bg-slate-900/50 rounded-lg mb-8 border border-slate-700">
+        <div className="flex justify-center items-center gap-4 p-4 bg-slate-900/50 rounded-lg mb-8 border border-slate-700">
             <h2 className="text-3xl font-bold text-white">I tuoi Punti Rabbia: <span className="font-mono text-yellow-300">{store.ragePoints}</span></h2>
+            <button
+                onClick={store.rerollShop}
+                disabled={store.ragePoints < REROLL_COST}
+                className="bg-blue-600 hover:enabled:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition-transform transform hover:enabled:scale-105 disabled:bg-slate-600 disabled:cursor-not-allowed"
+                title={`Costo: ${REROLL_COST} Punti Rabbia`}
+            >
+                Reroll ({REROLL_COST} PR)
+            </button>
         </div>
 
         <div className="grid lg:grid-cols-2 gap-8 mb-8">

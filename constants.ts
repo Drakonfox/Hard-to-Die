@@ -7,6 +7,10 @@ export const MAX_PLAYER_ACTIONS = 4; // Max number of actions a player can have
 export const MAX_INSTABILITY = 100;
 export const INSTABILITY_STUN_DURATION = 5; // seconds
 export const MAX_ACTION_LEVEL = 10;
+export const MAX_SHOP_ACTIONS = 4;
+export const MAX_SHOP_CONSUMABLES = 4;
+export const REROLL_COST = 25;
+
 
 export const RARITY_DATA: Record<Rarity, {
     name: string;

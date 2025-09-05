@@ -18,7 +18,7 @@ import {
     DotEffect
 } from './types';
 import { deepCopy, getRandomElements } from './utils';
-import { TICK_RATE, DIFFICULTY_MODIFIERS, ALL_PLAYER_ACTIONS, ALL_CONSUMABLES, MAX_CONSUMABLES, MAX_PLAYER_ACTIONS, MAX_INSTABILITY, INSTABILITY_STUN_DURATION, MAX_ACTION_LEVEL } from './constants';
+import { TICK_RATE, DIFFICULTY_MODIFIERS, ALL_PLAYER_ACTIONS, ALL_CONSUMABLES, MAX_CONSUMABLES, MAX_PLAYER_ACTIONS, MAX_INSTABILITY, INSTABILITY_STUN_DURATION, MAX_ACTION_LEVEL, MAX_SHOP_ACTIONS, MAX_SHOP_CONSUMABLES, REROLL_COST } from './constants';
 
 const createHealer = (name: string, icon: string): Healer => {
     // Basic healer setup
@@ -136,49 +136,50 @@ export class GameStore {
     }
 
     setupShop = () => {
-        const shopOfferings: ShopItem[] = [];
+        // 1. Actions & Upgrades
+        const actionOfferings: ShopItem[] = [];
 
-        // Generate upgrades for owned actions
-        this.playerActions.forEach(ownedAction => {
-            if (ownedAction.level >= MAX_ACTION_LEVEL) return;
-
-            const baseAction = ALL_PLAYER_ACTIONS.find(a => a.id === ownedAction.id);
-            if (!baseAction) return;
-
-            shopOfferings.push({
-                id: `upgrade_${ownedAction.id}_${ownedAction.level}`,
-                name: `Potenzia: ${ownedAction.name}`,
-                description: getUpgradeDescription(ownedAction),
-                cost: Math.floor(baseAction.baseCost * Math.pow(1.5, ownedAction.level)),
-                category: 'Potenziamento',
-                type: 'upgrade',
-                payload: baseAction,
-                owned: false,
+        // Generate upgrades for owned actions first
+        const availableUpgrades = this.playerActions
+            .filter(ownedAction => ownedAction.level < MAX_ACTION_LEVEL)
+            .map(ownedAction => {
+                const baseAction = ALL_PLAYER_ACTIONS.find(a => a.id === ownedAction.id)!;
+                return {
+                    id: `upgrade_${ownedAction.id}_${ownedAction.level}`,
+                    name: `Potenzia: ${ownedAction.name}`,
+                    description: getUpgradeDescription(ownedAction),
+                    cost: Math.floor(baseAction.baseCost * Math.pow(1.5, ownedAction.level)),
+                    category: 'Potenziamento' as const,
+                    type: 'upgrade' as const,
+                    payload: baseAction,
+                };
             });
-        });
-
-        // Generate a random sample of new actions to buy
-        const unownedActions = ALL_PLAYER_ACTIONS.filter(action =>
-            !this.playerActions.some(pa => pa.id === action.id) && this.currentLevel >= action.minLevel
-        );
         
-        const offeredActions = getRandomElements(unownedActions, 3);
+        actionOfferings.push(...availableUpgrades);
 
-        offeredActions.forEach(action => {
-            shopOfferings.push({
-                id: `action_${action.id}`,
-                name: action.name,
-                description: action.description,
-                cost: action.baseCost,
-                category: 'Azione',
-                type: 'action',
-                payload: action,
-                owned: false,
+        // Fill remaining action slots with new actions
+        const remainingActionSlots = MAX_SHOP_ACTIONS - actionOfferings.length;
+        if (remainingActionSlots > 0) {
+            const unownedActions = ALL_PLAYER_ACTIONS.filter(action =>
+                !this.playerActions.some(pa => pa.id === action.id) && this.currentLevel >= action.minLevel
+            );
+            const newActionsToAdd = getRandomElements(unownedActions, remainingActionSlots);
+
+            newActionsToAdd.forEach(action => {
+                actionOfferings.push({
+                    id: `action_${action.id}`,
+                    name: action.name,
+                    description: action.description,
+                    cost: action.baseCost,
+                    category: 'Azione' as const,
+                    type: 'action' as const,
+                    payload: action,
+                });
             });
-        });
-
-        // Generate a random sample of consumables
-        const offeredConsumables = getRandomElements(ALL_CONSUMABLES, 3);
+        }
+        
+        // 2. Consumables
+        const offeredConsumables = getRandomElements(ALL_CONSUMABLES, MAX_SHOP_CONSUMABLES);
         const consumableItems: ShopItem[] = offeredConsumables.map(consumable => {
             let cost = 75;
             if (consumable.id === 'painful_onion') cost = 60;
@@ -191,14 +192,23 @@ export class GameStore {
                 name: consumable.name,
                 description: consumable.description,
                 cost,
-                category: 'Consumabile',
-                type: 'consumable',
+                category: 'Consumabile' as const,
+                type: 'consumable' as const,
                 payload: consumable,
             }
         });
 
-        shopOfferings.sort((a,b) => a.cost - b.cost);
-        this.shopItems = [...shopOfferings, ...consumableItems];
+        actionOfferings.sort((a,b) => a.cost - b.cost);
+        this.shopItems = [...actionOfferings, ...consumableItems];
+    }
+    
+    rerollShop = () => {
+        if (this.ragePoints >= REROLL_COST) {
+            runInAction(() => {
+                this.ragePoints -= REROLL_COST;
+                this.setupShop();
+            });
+        }
     }
 
     startGame = (difficulty: Difficulty) => {
