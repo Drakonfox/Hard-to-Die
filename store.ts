@@ -36,6 +36,43 @@ const createHealer = (name: string, icon: string): Healer => {
     };
 };
 
+const getUpgradeDescription = (action: PlayerActionState): string => {
+    switch(action.id) {
+        case 'slap': return `Livello ${action.level + 1}: +5 Danno, -0.5s Cooldown.`;
+        case 'headbutt': return `Livello ${action.level + 1}: +15 Danno, -0.2s Auto-stordimento.`;
+        case 'voodoo_curse': return `Livello ${action.level + 1}: +2 Danno/sec, +2s Durata.`;
+        case 'food_poisoning': return `Livello ${action.level + 1}: +3 Danno/sec, -2s Cooldown.`;
+        default: return "Miglioramento generico.";
+    }
+};
+
+const applyUpgrade = (action: PlayerActionState): void => {
+    switch(action.id) {
+        case 'slap':
+            action.damage += 5;
+            action.cooldown = Math.max(0.5, action.cooldown - 0.5);
+            break;
+        case 'headbutt':
+            action.damage += 15;
+            if(action.stunDuration) {
+                action.stunDuration = Math.max(0, action.stunDuration - 0.2);
+            }
+            break;
+        case 'voodoo_curse':
+            if (action.dot) {
+                action.dot.damage += 2;
+                action.dot.duration += 2;
+            }
+            break;
+        case 'food_poisoning':
+             if (action.dot) {
+                action.dot.damage += 3;
+            }
+            action.cooldown = Math.max(5, action.cooldown - 2);
+            break;
+    }
+};
+
 export class GameStore {
     // Core state
     gameState: GameState = 'start';
@@ -71,27 +108,44 @@ export class GameStore {
     }
 
     setupShop = () => {
-        const actionItems: ShopItem[] = ALL_PLAYER_ACTIONS.map(action => {
-            let cost = 100;
-            if (action.id === 'slap') cost = 25;
-            if (action.id === 'voodoo_curse') cost = 75;
-            if (action.id === 'headbutt') cost = 100;
-            if (action.id === 'food_poisoning') cost = 120;
-            
-            return {
-                id: `action_${action.id}`,
-                name: action.name,
-                description: action.description,
-                cost: cost,
-                category: 'Azione',
-                type: 'action',
-                payload: action,
-                owned: this.playerActions.some(pa => pa.id === action.id),
-            };
+        const actionShopItems: ShopItem[] = [];
+
+        // Generate upgrades for owned actions
+        this.playerActions.forEach(ownedAction => {
+            const baseAction = ALL_PLAYER_ACTIONS.find(a => a.id === ownedAction.id);
+            if (!baseAction) return;
+
+            actionShopItems.push({
+                id: `upgrade_${ownedAction.id}_${ownedAction.level}`,
+                name: `Potenzia: ${ownedAction.name}`,
+                description: getUpgradeDescription(ownedAction),
+                cost: Math.floor(baseAction.baseCost * 1.5 * ownedAction.level),
+                category: 'Potenziamento',
+                type: 'upgrade',
+                payload: baseAction,
+                owned: false, // You can always buy an upgrade
+            });
+        });
+
+        // Generate new actions to buy
+        ALL_PLAYER_ACTIONS.forEach(action => {
+            const isOwned = this.playerActions.some(pa => pa.id === action.id);
+            if (!isOwned && this.currentLevel >= action.minLevel) {
+                actionShopItems.push({
+                    id: `action_${action.id}`,
+                    name: action.name,
+                    description: action.description,
+                    cost: action.baseCost,
+                    category: 'Azione',
+                    type: 'action',
+                    payload: action,
+                    owned: false,
+                });
+            }
         });
 
         const consumableItems: ShopItem[] = ALL_CONSUMABLES.map(consumable => {
-            let cost = 50; // default cost for consumables
+            let cost = 50;
              if (consumable.id === 'painful_onion') cost = 60;
              if (consumable.id === 'corrupted_coffee') cost = 80;
 
@@ -106,44 +160,35 @@ export class GameStore {
             }
         });
 
-        this.shopItems = [...actionItems, ...consumableItems];
+        this.shopItems = [...actionShopItems, ...consumableItems];
     }
 
     startGame = (difficulty: Difficulty) => {
         this.difficulty = difficulty;
         this.currentLevel = 1;
-        this.ragePoints = 50; // Starting money
-        this.playerActions = []; // Start with NO actions
+        this.ragePoints = 50;
+        this.playerActions = [];
         this.levelData = null;
         this.consumables = [];
         this.setupShop();
-        this.gameState = 'shop'; // Go to shop first
+        this.gameState = 'shop';
     }
 
     loadLevel = (levelNumber: number) => {
         const healersForLevel: Healer[] = [];
 
         if (levelNumber === 1) {
-            // Level 1: A single, weak healer to introduce the mechanics.
             healersForLevel.push({
-                id: 'acolyte',
-                name: 'Apprendista Guaritore',
-                icon: '🧑‍⚕️',
-                maxHp: 100,
-                abilities: [
-                    { id: 'acolyte-mend', name: 'Cura Debole', icon: '🩹', cooldown: 8, timeToNextUse: 4, healAmount: 8 }
-                ],
+                id: 'acolyte', name: 'Apprendista Guaritore', icon: '🧑‍⚕️', maxHp: 100,
+                abilities: [ { id: 'acolyte-mend', name: 'Cura Debole', icon: '🩹', cooldown: 8, timeToNextUse: 4, healAmount: 8 } ],
                 stunTimer: 0
             });
+        } else if (levelNumber === 2) {
+             healersForLevel.push(createHealer('Chierico', '🙏'));
         } else {
-            // Subsequent levels gradually introduce more and stronger healers.
             healersForLevel.push(createHealer('Chierico', '🙏'));
-            if (levelNumber >= 3) {
-                healersForLevel.push(createHealer('Sciamano', '🌿'));
-            }
-            if (levelNumber >= 5) {
-                healersForLevel.push(createHealer('Paladino', '🛡️'));
-            }
+            if (levelNumber >= 3) healersForLevel.push(createHealer('Sciamano', '🌿'));
+            if (levelNumber >= 5) healersForLevel.push(createHealer('Paladino', '🛡️'));
         }
     
         const newLevelData: LevelData = {
@@ -308,8 +353,6 @@ export class GameStore {
 
         runInAction(() => {
             consumable.quantity--;
-
-            // Apply effect
             const effect = consumable.effect;
             if (effect.type === 'STUN_ALL_HEALERS') {
                 this.healers.forEach(h => h.stunTimer = (h.stunTimer || 0) + effect.duration);
@@ -335,6 +378,7 @@ export class GameStore {
     }
 
     enterShop = () => {
+        this.playerActions.forEach(action => action.currentCooldown = 0);
         this.setupShop();
         this.gameState = 'shop';
     }
@@ -356,25 +400,31 @@ export class GameStore {
         if (this.ragePoints < item.cost) return;
 
         runInAction(() => {
+            this.ragePoints -= item.cost;
             if (item.type === 'action') {
-                if (item.owned) return;
-                this.ragePoints -= item.cost;
-                this.playerActions.push({ ...(item.payload as PlayerAction), currentCooldown: 0 });
-                const shopItem = this.shopItems.find(si => si.id === item.id);
-                if (shopItem) shopItem.owned = true;
+                this.playerActions.push({ ...(item.payload as PlayerAction), currentCooldown: 0, level: 1 });
+            } else if (item.type === 'upgrade') {
+                const actionToUpgrade = this.playerActions.find(pa => pa.id === (item.payload as PlayerAction).id);
+                if(actionToUpgrade) {
+                    applyUpgrade(actionToUpgrade);
+                    actionToUpgrade.level++;
+                }
             } else if (item.type === 'consumable') {
                 const consumablePayload = item.payload as Omit<Consumable, 'quantity'>;
                 const existingConsumable = this.consumables.find(c => c.id === consumablePayload.id);
 
                 if (existingConsumable) {
-                    this.ragePoints -= item.cost;
                     existingConsumable.quantity++;
                 } else {
-                    if (this.consumables.length >= MAX_CONSUMABLES) return; // Inventory is full for new items
-                    this.ragePoints -= item.cost;
+                    if (this.consumables.length >= MAX_CONSUMABLES) {
+                        this.ragePoints += item.cost; // Refund
+                        return;
+                    }
                     this.consumables.push({ ...consumablePayload, quantity: 1 });
                 }
             }
+            // Refresh shop to show new upgrades or remove bought actions
+            this.setupShop();
         });
     }
 

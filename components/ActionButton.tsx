@@ -30,6 +30,10 @@ const ActionButton: React.FC<ActionButtonProps> = ({ action, onUse, disabled }) 
                  hover:enabled:border-cyan-500 hover:enabled:bg-slate-700/80 transition-all duration-200
                  flex flex-col group"
     >
+      <div className="absolute top-2 right-2 bg-blue-600 text-white text-xs font-bold px-2 py-0.5 rounded-full z-10">
+          Lvl {action.level}
+      </div>
+
       <div className="flex-grow">
         <div className="flex justify-between items-start mb-2">
             <h3 className="font-bold text-cyan-400 text-xl leading-tight break-words pr-2 group-hover:text-cyan-300">{action.name}</h3>

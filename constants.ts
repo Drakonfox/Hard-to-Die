@@ -31,6 +31,8 @@ export const ALL_PLAYER_ACTIONS: PlayerAction[] = [
         damage: 10,
         cooldown: 3,
         instabilityGain: 5,
+        minLevel: 1,
+        baseCost: 25,
     },
     {
         id: 'headbutt',
@@ -41,6 +43,8 @@ export const ALL_PLAYER_ACTIONS: PlayerAction[] = [
         cooldown: 12,
         instabilityGain: 15,
         stunDuration: 2,
+        minLevel: 1,
+        baseCost: 100,
     },
     {
         id: 'voodoo_curse',
@@ -55,7 +59,9 @@ export const ALL_PLAYER_ACTIONS: PlayerAction[] = [
             damage: 5,
             duration: 10,
             icon: '🔮'
-        }
+        },
+        minLevel: 2,
+        baseCost: 75,
     },
     {
         id: 'food_poisoning',
@@ -70,7 +76,9 @@ export const ALL_PLAYER_ACTIONS: PlayerAction[] = [
             damage: 8,
             duration: 15,
             icon: '🤢'
-        }
+        },
+        minLevel: 2,
+        baseCost: 120,
     }
 ];
 

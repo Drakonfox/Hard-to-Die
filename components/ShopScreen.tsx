@@ -28,6 +28,8 @@ const ShopItemCard: React.FC<{ item: ShopItem, store: GameStore }> = ({ item, st
     if (item.type === 'action' && item.owned) {
         isDisabled = true;
         buttonText = 'Acquistato';
+    } else if (item.type === 'upgrade') {
+        buttonText = 'Potenzia';
     } else if (item.type === 'consumable') {
         const inventoryFull = consumables.length >= MAX_CONSUMABLES;
         const alreadyOwned = consumables.some(c => c.id === item.payload.id);
@@ -39,7 +41,7 @@ const ShopItemCard: React.FC<{ item: ShopItem, store: GameStore }> = ({ item, st
 
 
     return (
-        <div className={`relative flex flex-col text-left p-4 bg-slate-800 rounded-lg border-2 ${item.owned ? 'border-green-600/70' : 'border-slate-700'} transition-all ${isDisabled && !item.owned ? 'opacity-60' : ''}`}>
+        <div className={`relative flex flex-col text-left p-4 bg-slate-800 rounded-lg border-2 ${item.type === 'upgrade' ? 'border-purple-600/70' : 'border-slate-700'} transition-all ${isDisabled && !item.owned ? 'opacity-60' : ''}`}>
             
             <div className={`absolute -top-3 left-3 text-xs font-bold px-2 py-0.5 rounded-full ${getCategoryStyles(item.category)}`}>
                 {item.category}
@@ -84,7 +86,7 @@ const ShopScreen: React.FC<ShopScreenProps> = observer(({ store }) => {
       <div className="grid lg:grid-cols-2 gap-8 mb-8">
         {/* Actions Column */}
         <section>
-          <h2 className="text-3xl font-bold text-slate-100 mb-4 text-left">Azioni</h2>
+          <h2 className="text-3xl font-bold text-slate-100 mb-4 text-left">Azioni e Potenziamenti</h2>
           <div className="grid md:grid-cols-2 gap-4">
             {actionItems.map(item => (
                 <ShopItemCard 

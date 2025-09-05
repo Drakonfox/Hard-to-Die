@@ -44,10 +44,13 @@ export interface PlayerAction {
   instabilityGain: number;
   stunDuration?: number;
   dot?: DotEffect;
+  minLevel: number;
+  baseCost: number;
 }
 
 export interface PlayerActionState extends PlayerAction {
   currentCooldown: number;
+  level: number;
 }
 
 export interface HealerAbility {
