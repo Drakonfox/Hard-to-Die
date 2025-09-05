@@ -1,5 +1,7 @@
 // types.ts
 
+export type Rarity = 'Common' | 'Uncommon' | 'Rare' | 'Epic';
+
 export type Difficulty = 'Easy' | 'Medium' | 'Hard';
 
 export interface ShieldState {
@@ -46,6 +48,7 @@ export interface PlayerAction {
   dot?: DotEffect;
   minLevel: number;
   baseCost: number;
+  rarity: Rarity;
 }
 
 export interface PlayerActionState extends PlayerAction {

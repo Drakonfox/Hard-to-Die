@@ -1,6 +1,7 @@
 // FIX: Implement the ActionButton component for player actions.
 import React from 'react';
 import { PlayerActionState } from '../types';
+import { RARITY_DATA } from '../constants';
 
 interface ActionButtonProps {
   action: PlayerActionState;
@@ -19,16 +20,17 @@ const StatGridItem: React.FC<{ label: string; value: string | number; colorClass
 const ActionButton: React.FC<ActionButtonProps> = ({ action, onUse, disabled }) => {
   const cooldownPercentage = action.cooldown > 0 ? (action.cooldown - action.currentCooldown) / action.cooldown * 100 : 0;
   const showCooldownTimer = action.currentCooldown > 0;
+  const rarityColor = RARITY_DATA[action.rarity]?.color || 'border-slate-700';
 
   return (
     <button
       onClick={() => onUse(action)}
       disabled={disabled}
       title={action.description}
-      className="relative w-full p-4 bg-slate-800 rounded-lg border-2 border-slate-700 text-left overflow-hidden
+      className={`relative w-full p-4 bg-slate-800 rounded-lg border-2 ${rarityColor} text-left overflow-hidden
                  disabled:bg-slate-800/50 disabled:cursor-not-allowed disabled:text-slate-500
                  hover:enabled:border-cyan-500 hover:enabled:bg-slate-700/80 transition-all duration-200
-                 flex flex-col group"
+                 flex flex-col group`}
     >
       <div className="absolute top-2 right-2 bg-blue-600 text-white text-xs font-bold px-2 py-0.5 rounded-full z-10">
           Lvl {action.level}

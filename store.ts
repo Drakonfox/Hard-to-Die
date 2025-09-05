@@ -17,7 +17,7 @@ import {
     HotEffect,
     DotEffect
 } from './types';
-import { deepCopy } from './utils';
+import { deepCopy, getRandomElements } from './utils';
 import { TICK_RATE, DIFFICULTY_MODIFIERS, ALL_PLAYER_ACTIONS, ALL_CONSUMABLES, MAX_CONSUMABLES } from './constants';
 
 const createHealer = (name: string, icon: string): Healer => {
@@ -42,6 +42,7 @@ const getUpgradeDescription = (action: PlayerActionState): string => {
         case 'headbutt': return `Livello ${action.level + 1}: +15 Danno, -0.2s Auto-stordimento.`;
         case 'voodoo_curse': return `Livello ${action.level + 1}: +2 Danno/sec, +2s Durata.`;
         case 'food_poisoning': return `Livello ${action.level + 1}: +3 Danno/sec, -2s Cooldown.`;
+        case 'uncontrolled_rage': return `Livello ${action.level + 1}: +25 Danno, +10 Instabilità.`;
         default: return "Miglioramento generico.";
     }
 };
@@ -69,6 +70,10 @@ const applyUpgrade = (action: PlayerActionState): void => {
                 action.dot.damage += 3;
             }
             action.cooldown = Math.max(5, action.cooldown - 2);
+            break;
+        case 'uncontrolled_rage':
+            action.damage += 25;
+            action.instabilityGain += 10;
             break;
     }
 };
@@ -123,25 +128,38 @@ export class GameStore {
                 category: 'Potenziamento',
                 type: 'upgrade',
                 payload: baseAction,
-                owned: false, // You can always buy an upgrade
+                owned: false,
             });
         });
 
-        // Generate new actions to buy
-        ALL_PLAYER_ACTIONS.forEach(action => {
-            const isOwned = this.playerActions.some(pa => pa.id === action.id);
-            if (!isOwned && this.currentLevel >= action.minLevel) {
-                actionShopItems.push({
-                    id: `action_${action.id}`,
-                    name: action.name,
-                    description: action.description,
-                    cost: action.baseCost,
-                    category: 'Azione',
-                    type: 'action',
-                    payload: action,
-                    owned: false,
-                });
-            }
+        // Generate new actions to buy with rarity-based selection
+        const unownedActions = ALL_PLAYER_ACTIONS.filter(action =>
+            !this.playerActions.some(pa => pa.id === action.id) && this.currentLevel >= action.minLevel
+        );
+
+        const common = unownedActions.filter(a => a.rarity === 'Common');
+        const uncommon = unownedActions.filter(a => a.rarity === 'Uncommon');
+        const rare = unownedActions.filter(a => a.rarity === 'Rare');
+        const epic = unownedActions.filter(a => a.rarity === 'Epic');
+
+        const offeredActions = [
+            ...common,
+            ...getRandomElements(uncommon, 2),
+            ...getRandomElements(rare, 1),
+            ...getRandomElements(epic, 1),
+        ];
+
+        offeredActions.forEach(action => {
+            actionShopItems.push({
+                id: `action_${action.id}`,
+                name: action.name,
+                description: action.description,
+                cost: action.baseCost,
+                category: 'Azione',
+                type: 'action',
+                payload: action,
+                owned: false,
+            });
         });
 
         const consumableItems: ShopItem[] = ALL_CONSUMABLES.map(consumable => {
@@ -160,6 +178,7 @@ export class GameStore {
             }
         });
 
+        actionShopItems.sort((a,b) => a.cost - b.cost);
         this.shopItems = [...actionShopItems, ...consumableItems];
     }
 

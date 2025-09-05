@@ -1,8 +1,8 @@
 import React from 'react';
 import { observer } from 'mobx-react-lite';
 import type { GameStore } from '../store';
-import { ShopItem, ShopItemCategory } from '../types';
-import { MAX_CONSUMABLES } from '../constants';
+import { ShopItem, ShopItemCategory, PlayerAction } from '../types';
+import { MAX_CONSUMABLES, RARITY_DATA } from '../constants';
 
 interface ShopScreenProps {
   store: GameStore;
@@ -39,20 +39,33 @@ const ShopItemCard: React.FC<{ item: ShopItem, store: GameStore }> = ({ item, st
         }
     }
 
+    const isActionOrUpgrade = item.type === 'action' || item.type === 'upgrade';
+    const actionPayload = isActionOrUpgrade ? (item.payload as PlayerAction) : null;
+    const rarity = actionPayload?.rarity;
+    const rarityInfo = rarity ? RARITY_DATA[rarity] : null;
+    
+    const borderColor = rarityInfo ? rarityInfo.color : 'border-slate-700';
 
     return (
-        <div className={`relative flex flex-col text-left p-4 bg-slate-800 rounded-lg border-2 ${item.type === 'upgrade' ? 'border-purple-600/70' : 'border-slate-700'} transition-all ${isDisabled && !item.owned ? 'opacity-60' : ''}`}>
+        <div className={`relative flex flex-col text-left p-4 bg-slate-800 rounded-lg border-2 ${borderColor} transition-all ${isDisabled && !item.owned ? 'opacity-60' : ''}`}>
             
             <div className={`absolute -top-3 left-3 text-xs font-bold px-2 py-0.5 rounded-full ${getCategoryStyles(item.category)}`}>
                 {item.category}
             </div>
 
-            <div className="pt-2">
+            <div className="pt-2 flex flex-col flex-grow">
                 <h3 className="text-xl font-bold text-cyan-400 mb-2">{item.name}</h3>
-                <p className="text-slate-300 text-sm flex-grow mb-4">{item.description}</p>
+                <p className="text-slate-300 text-sm mb-4">{item.description}</p>
+                
+                {isActionOrUpgrade && rarityInfo && (
+                    <div className="mb-4">
+                        <span className={`font-bold ${rarityInfo.textColor}`}>{rarityInfo.name}</span>
+                        {item.type === 'action' && <span className="text-slate-400 text-sm"> (Chance: {rarityInfo.chance * 100}%)</span>}
+                    </div>
+                )}
             </div>
 
-            <div className="mt-auto flex justify-between items-center">
+            <div className="mt-auto flex justify-between items-center pt-3 border-t border-slate-700/50">
                 <span className="text-xl font-bold text-yellow-400">{item.cost} PR</span>
                 <button
                     onClick={() => buyShopItem(item)}
