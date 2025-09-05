@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Healer } from '../types';
 
@@ -9,35 +8,47 @@ interface HealerDisplayProps {
 const HealerDisplay: React.FC<HealerDisplayProps> = ({ healers }) => {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-      {healers.map(healer => (
-        <div key={healer.id} className="bg-slate-700 p-3 rounded-lg border border-slate-600 flex flex-col gap-2">
-            <div className="flex items-center gap-3">
-                <span className="text-4xl">{healer.icon}</span>
-                <div>
-                    <p className="font-bold text-lg">{healer.name}</p>
+      {healers.map(healer => {
+        const isStunned = healer.stunTimer && healer.stunTimer > 0;
+        return (
+          <div key={healer.id} className="relative bg-slate-800 p-4 rounded-lg border border-slate-700 text-slate-300">
+              
+              <div className={`transition-opacity duration-300 ${isStunned ? 'opacity-25 pointer-events-none' : ''}`}>
+                <div className="flex items-center mb-4">
+                    <span className="text-5x1 mr-4">{healer.icon}</span>
+                    <span className="font-bold text-xl text-slate-100">{healer.name}</span>
                 </div>
-            </div>
-            <div className="flex flex-col gap-2">
-                {healer.abilities.map(ability => {
-                    const progress = 100 - (ability.timeToNextUse / ability.cooldown) * 100;
-                    return (
-                        <div key={ability.id} className="text-sm">
-                            <div className="flex justify-between items-center">
-                                <div className="flex items-center gap-1.5">
-                                    <span className="text-lg">{ability.icon}</span>
-                                    <span>{ability.name}</span>
+                <div className="space-y-2">
+                    {healer.abilities.map(ability => {
+                        const progress = 100 - (ability.timeToNextUse / ability.cooldown) * 100;
+                        return (
+                            <div key={ability.id} className="text-sm">
+                                <div className="flex justify-between items-center mb-1">
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-xl">{ability.icon}</span>
+                                        <span>{ability.name}</span>
+                                    </div>
+                                    <span className="font-mono text-xs text-slate-400">{ability.timeToNextUse.toFixed(1)}s</span>
                                 </div>
-                                <span className="font-mono text-xs">{ability.timeToNextUse.toFixed(1)}s</span>
+                                <div className="w-full bg-slate-600/50 rounded-full h-2.5 shadow-inner">
+                                    <div className="bg-green-500 h-2.5 rounded-full" style={{width: `${progress}%`}}></div>
+                                </div>
                             </div>
-                            <div className="w-full bg-slate-600 rounded-full h-2 mt-1">
-                                <div className="bg-green-500 h-2 rounded-full" style={{width: `${progress}%`}}></div>
-                            </div>
-                        </div>
-                    );
-                })}
-            </div>
-        </div>
-      ))}
+                        );
+                    })}
+                </div>
+              </div>
+
+              {isStunned && (
+                  <div className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center z-10 rounded-lg backdrop-blur-sm">
+                      <p className="text-5xl animate-pulse">😵</p>
+                      <p className="text-2xl font-bold text-yellow-300 mt-2">STUNNED</p>
+                      <p className="text-xl font-mono text-white">{healer.stunTimer?.toFixed(1)}s</p>
+                  </div>
+              )}
+          </div>
+        );
+      })}
     </div>
   );
 };

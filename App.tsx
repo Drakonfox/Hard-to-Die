@@ -17,6 +17,10 @@ const App: React.FC = () => {
   const [isTakingDamage, setIsTakingDamage] = useState(false);
   const damageTimeoutRef = useRef<number | null>(null);
 
+  // Stats for the stun mechanic
+  const [healerStunDuration, setHealerStunDuration] = useState(2.0); // in seconds
+  const [instabilityGainMultiplier, setInstabilityGainMultiplier] = useState(1.0);
+
   const [actionToReplaceWith, setActionToReplaceWith] = useState<PlayerActionState | null>(null);
 
   const triggerDamageEffect = useCallback(() => {
@@ -34,6 +38,8 @@ const App: React.FC = () => {
     setCurrentLevel(1);
     setPlayerActions(deepCopy(INITIAL_ACTIONS));
     setDifficulty(selectedDifficulty);
+    setHealerStunDuration(2.0);
+    setInstabilityGainMultiplier(1.0);
     setGameStatus(GameStatus.Playing);
   }, []);
   
@@ -54,18 +60,24 @@ const App: React.FC = () => {
     if (upgrade.type === 'stat_boost') {
       const upgradedActions = upgrade.apply(playerActions);
       setPlayerActions(upgradedActions.map(action => ({ ...action, currentCooldown: 0 })));
-      setCurrentLevel(prevLevel => prevLevel + 1);
-      setGameStatus(GameStatus.Playing);
     } else if (upgrade.type === 'new_action') {
       if (playerActions.length < 4) {
         setPlayerActions(prev => [...prev, { ...upgrade.action, currentCooldown: 0 }]);
-        setCurrentLevel(prevLevel => prevLevel + 1);
-        setGameStatus(GameStatus.Playing);
       } else {
         setActionToReplaceWith(upgrade.action);
         setGameStatus(GameStatus.ReplacingAction);
+        return; // Don't advance level yet
       }
+    } else if (upgrade.type === 'healer_stun_upgrade') {
+        if (upgrade.stat === 'duration') {
+            setHealerStunDuration(prev => prev + upgrade.amount);
+        } else if (upgrade.stat === 'instability_gain') {
+            setInstabilityGainMultiplier(prev => prev * upgrade.amount);
+        }
     }
+
+    setCurrentLevel(prevLevel => prevLevel + 1);
+    setGameStatus(GameStatus.Playing);
   }, [playerActions]);
 
   const handleConfirmReplace = useCallback((actionToDiscardId: string) => {
@@ -122,8 +134,6 @@ const App: React.FC = () => {
         return <StartScreen onStart={startGame} />;
       case GameStatus.Playing:
         const levelData = generateLevel(currentLevel);
-        // Applying difficulty modifiers is complex with new healer structure, so we skip it for now.
-        // A proper implementation would dig into the generated healers' abilities.
         return (
           <Game 
             key={currentLevel}
@@ -133,6 +143,8 @@ const App: React.FC = () => {
             onLevelComplete={handleLevelComplete}
             onGameOver={handleGameOver}
             onTakeDamage={triggerDamageEffect}
+            healerStunDuration={healerStunDuration}
+            instabilityGainMultiplier={instabilityGainMultiplier}
           />
         );
       case GameStatus.LevelComplete:
@@ -147,7 +159,7 @@ const App: React.FC = () => {
   };
 
   return (
-    <main className="min-h-screen bg-slate-900 text-slate-100 flex flex-col items-center justify-center p-4 font-mono">
+    <main className="min-h-screen bg-slate-900 text-slate-100 flex flex-col items-center justify-center p-4">
         <div className={`w-full max-w-5xl mx-auto ${isTakingDamage ? 'animate-take-damage' : ''}`}>
             {renderContent()}
         </div>

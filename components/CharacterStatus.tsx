@@ -8,11 +8,14 @@ interface CharacterStatusProps {
   shield: ShieldState | null;
   activeDots: ActiveDotState[];
   activeHots: ActiveHotState[];
+  instability: number;
+  maxInstability: number;
 }
 
-const CharacterStatus: React.FC<CharacterStatusProps> = ({ hp, maxHp, shield, activeDots, activeHots }) => {
+const CharacterStatus: React.FC<CharacterStatusProps> = ({ hp, maxHp, shield, activeDots, activeHots, instability, maxInstability }) => {
   const hpPercentage = (hp / maxHp) * 100;
   const shieldPercentage = shield ? (shield.amount / maxHp) * 100 : 0;
+  const instabilityPercentage = (instability / maxInstability) * 100;
 
   const getHpColor = () => {
     if (hpPercentage > 50) return 'bg-green-500';
@@ -21,43 +24,63 @@ const CharacterStatus: React.FC<CharacterStatusProps> = ({ hp, maxHp, shield, ac
   };
 
   return (
-    <div className="w-full bg-slate-700 rounded-lg p-4 border border-slate-600">
-      <div className="flex justify-between items-center mb-2">
-        <h2 className="text-xl font-bold text-slate-200">Your Pathetic Life</h2>
-        <div className="text-right">
-            <p className="text-lg font-bold text-slate-200">
-              {Math.max(0, Math.round(hp))} / {maxHp}
-            </p>
-            {shield && <p className="text-sm font-bold text-cyan-400">Shield: {Math.round(shield.amount)}</p>}
+    <div className="w-full bg-slate-800/50 backdrop-blur-sm rounded-xl p-4 border-2 border-slate-700 space-y-4">
+      {/* Health Section */}
+      <div>
+        <div className="flex justify-between items-baseline mb-1">
+          <h2 className="text-xl font-bold text-slate-100">Character Status</h2>
+          <p className="font-mono text-xl text-slate-100">
+            <span>{Math.max(0, Math.round(hp))} / {maxHp}</span>
+            {shield && <span className="text-cyan-400 font-bold ml-2">(+{Math.round(shield.amount)})</span>}
+          </p>
+        </div>
+        <div className="relative w-full bg-gradient-to-b from-slate-800 to-slate-900 rounded-full h-8 border-2 border-slate-600 shadow-inner">
+          <div
+            className={`absolute top-0 left-0 h-full rounded-full transition-all duration-300 ${getHpColor()} shadow-lg`}
+            style={{ width: `${Math.max(0, hpPercentage)}%` }}
+          />
+          {shield && shield.amount > 0 && (
+            <div
+              className="absolute top-0 left-0 h-full rounded-full bg-cyan-500/50 border-2 border-cyan-400"
+              style={{ width: `${Math.max(0, hpPercentage + shieldPercentage)}%`, zIndex: -1 }}
+            />
+          )}
         </div>
       </div>
-      <div className="relative w-full bg-slate-900 rounded-full h-6 border-2 border-slate-600">
-        <div
-          className={`absolute top-0 left-0 h-full rounded-full transition-all duration-300 ${getHpColor()}`}
-          style={{ width: `${Math.max(0, hpPercentage)}%` }}
-        />
-        <div
-          className="absolute top-0 left-0 h-full rounded-full bg-cyan-500/50 border-2 border-cyan-400"
-          style={{ width: `${Math.max(0, shieldPercentage)}%` }}
-        />
+      
+      {/* Instability Section */}
+      <div>
+        <div className="flex justify-between items-baseline mb-1">
+            <h3 className="font-bold text-purple-300">Instability</h3>
+            <p className="font-mono text-purple-300">{Math.floor(instability)} / {maxInstability}</p>
+        </div>
+        <div className="w-full bg-slate-900 rounded-full h-4 border border-slate-600 shadow-inner">
+            <div
+            className="h-full rounded-full bg-purple-500 transition-all duration-200"
+            style={{ width: `${instabilityPercentage}%` }}
+            />
+        </div>
       </div>
-      <div className="flex items-center flex-wrap gap-2 mt-2 min-h-[36px]">
-        {(activeDots.length > 0 || activeHots.length > 0) && (
+
+      {/* Effects Section */}
+      <div className="flex items-center flex-wrap gap-2 min-h-[28px]">
+        {(activeDots.length > 0 || activeHots.length > 0) ? (
             <>
-                <h3 className="text-sm font-bold text-slate-400">Effects:</h3>
                 {activeDots.map(dot => (
-                    <div key={dot.id} className="flex items-center gap-1 bg-red-900/50 px-2 py-1 rounded-md" title={`${dot.id.charAt(0).toUpperCase() + dot.id.slice(1)}`}>
+                    <div key={dot.id} className="flex items-center gap-2 bg-slate-900/70 px-3 py-1 rounded-full border border-red-500/50" title={`${dot.id.charAt(0).toUpperCase() + dot.id.slice(1)}`}>
                         <span className="text-lg">{dot.icon}</span>
-                        <span className="text-xs font-mono text-slate-300">{dot.remainingDuration.toFixed(1)}s</span>
+                        <span className="text-sm font-mono text-red-300">{dot.remainingDuration.toFixed(1)}s</span>
                     </div>
                 ))}
                 {activeHots.map(hot => (
-                    <div key={hot.id} className="flex items-center gap-1 bg-green-900/50 px-2 py-1 rounded-md" title={`${hot.id.charAt(0).toUpperCase() + hot.id.slice(1)}`}>
+                    <div key={hot.id} className="flex items-center gap-2 bg-slate-900/70 px-3 py-1 rounded-full border border-green-500/50" title={`${hot.id.charAt(0).toUpperCase() + hot.id.slice(1)}`}>
                         <span className="text-lg">{hot.icon}</span>
-                        <span className="text-xs font-mono text-slate-300">{hot.remainingDuration.toFixed(1)}s</span>
+                        <span className="text-sm font-mono text-green-300">{hot.remainingDuration.toFixed(1)}s</span>
                     </div>
                 ))}
             </>
+        ) : (
+            <p className="text-sm text-slate-500">No active effects.</p>
         )}
       </div>
     </div>

@@ -31,6 +31,7 @@ export interface PlayerActionState {
   description: string;
   dot?: DotEffect;
   stunDuration?: number; // in seconds
+  instabilityGain: number;
 }
 
 export interface ActiveDotState {
@@ -61,6 +62,7 @@ export interface StatUpgrade {
   type: 'stat_boost';
   title: string;
   description: string;
+  icon: string;
   apply: (actions: PlayerActionState[]) => PlayerActionState[];
 }
 
@@ -70,7 +72,17 @@ export interface NewActionUpgrade {
   action: PlayerActionState;
 }
 
-export type Upgrade = StatUpgrade | NewActionUpgrade;
+export interface HealerStunUpgrade {
+  id: string;
+  type: 'healer_stun_upgrade';
+  title: string;
+  description: string;
+  icon: string;
+  stat: 'duration' | 'instability_gain';
+  amount: number; // The value to add or multiply
+}
+
+export type Upgrade = StatUpgrade | NewActionUpgrade | HealerStunUpgrade;
 
 
 export type HealerAbilityType = 'direct_heal' | 'cleanse' | 'shield' | 'regeneration';
@@ -92,6 +104,7 @@ export interface Healer {
   name: string;
   icon: string;
   abilities: HealerAbility[];
+  stunTimer?: number;
 }
 
 export interface Level {
@@ -105,4 +118,16 @@ export interface EventLogMessage {
   id: number;
   message: string;
   type: 'damage' | 'heal' | 'effect' | 'info' | 'shield';
+}
+
+export interface Consumable {
+    id: string;
+    instanceId: number; // To differentiate between multiple items of the same type
+    name: string;
+    icon: string;
+    description: string;
+    effect: {
+        type: 'instant_damage' | 'cooldown_reduction';
+        amount: number;
+    }
 }

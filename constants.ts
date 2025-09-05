@@ -1,5 +1,5 @@
 // FIX: Define all the necessary constants for the application.
-import { Difficulty, PlayerActionState, Level, Upgrade, StatUpgrade, Healer, HealerAbility } from './types';
+import { Difficulty, PlayerActionState, Level, Upgrade, StatUpgrade, Healer, HealerAbility, Consumable, HealerStunUpgrade } from './types';
 import { deepCopy } from './utils';
 
 export const DIFFICULTY_MODIFIERS: Record<Difficulty, {
@@ -36,7 +36,8 @@ export const INITIAL_ACTIONS: PlayerActionState[] = [
     damage: 10,
     cooldown: 2,
     currentCooldown: 0,
-    description: "A simple punch to the face. It's a start."
+    description: "A simple punch to the face. It's a start.",
+    instabilityGain: 15,
   },
   {
     id: 'stub_toe',
@@ -45,7 +46,8 @@ export const INITIAL_ACTIONS: PlayerActionState[] = [
     damage: 5,
     cooldown: 1,
     currentCooldown: 0,
-    description: 'Deliberately stub your toe. Annoyingly painful.'
+    description: 'Deliberately stub your toe. Annoyingly painful.',
+    instabilityGain: 5,
   },
 ];
 
@@ -57,7 +59,8 @@ export const ACTION_POOL: PlayerActionState[] = [
     damage: 40,
     cooldown: 20,
     currentCooldown: 0,
-    description: 'A massive burst of self-inflicted damage. Long cooldown.'
+    description: 'A massive burst of self-inflicted damage. Long cooldown.',
+    instabilityGain: 40,
   },
   {
     id: 'bleed',
@@ -67,7 +70,8 @@ export const ACTION_POOL: PlayerActionState[] = [
     cooldown: 8,
     currentCooldown: 0,
     description: 'Cause a bleeding wound. Deals damage over time.',
-    dot: { id: 'bleed', icon: '🩸', damage: 12, duration: 4, ticks: 4 }
+    dot: { id: 'bleed', icon: '🩸', damage: 12, duration: 4, ticks: 4 },
+    instabilityGain: 20,
   },
   {
     id: 'set_on_fire',
@@ -77,7 +81,8 @@ export const ACTION_POOL: PlayerActionState[] = [
     cooldown: 12,
     currentCooldown: 0,
     description: 'A fiery embrace. Deals rapid damage over a short time.',
-    dot: { id: 'burn', icon: '🔥', damage: 18, duration: 3, ticks: 6 }
+    dot: { id: 'burn', icon: '🔥', damage: 18, duration: 3, ticks: 6 },
+    instabilityGain: 25,
   },
   {
     id: 'poison_self',
@@ -87,7 +92,8 @@ export const ACTION_POOL: PlayerActionState[] = [
     cooldown: 15,
     currentCooldown: 0,
     description: 'Ingest a foul concoction. Deals damage over a long time.',
-    dot: { id: 'poison', icon: '☠️', damage: 20, duration: 10, ticks: 5 }
+    dot: { id: 'poison', icon: '☠️', damage: 20, duration: 10, ticks: 5 },
+    instabilityGain: 30,
   },
   {
     id: 'self_stun',
@@ -97,7 +103,8 @@ export const ACTION_POOL: PlayerActionState[] = [
     cooldown: 12,
     currentCooldown: 0,
     description: 'Hit yourself so hard you get stunned for 2 seconds.',
-    stunDuration: 2
+    stunDuration: 2,
+    instabilityGain: 10,
   },
   {
     id: 'bang_head',
@@ -106,7 +113,8 @@ export const ACTION_POOL: PlayerActionState[] = [
     damage: 25,
     cooldown: 5,
     currentCooldown: 0,
-    description: 'Repeatedly bang your head against a wall. Effective, but dizzying.'
+    description: 'Repeatedly bang your head against a wall. Effective, but dizzying.',
+    instabilityGain: 25,
   }
 ];
 
@@ -117,6 +125,7 @@ export const STAT_UPGRADE_POOL: StatUpgrade[] = [
     type: 'stat_boost',
     title: 'Stronger Punches',
     description: 'Increase the damage of Self Punch by 5.',
+    icon: '💪',
     apply: (actions: PlayerActionState[]): PlayerActionState[] => {
       const newActions = deepCopy(actions);
       const punch = newActions.find(a => a.id === 'punch');
@@ -131,6 +140,7 @@ export const STAT_UPGRADE_POOL: StatUpgrade[] = [
     type: 'stat_boost',
     title: 'Faster Actions',
     description: 'Reduce the cooldown of all your actions by 10% (min 0.5s).',
+    icon: '⚡️',
     apply: (actions: PlayerActionState[]): PlayerActionState[] => {
       return actions.map(action => ({
         ...action,
@@ -143,6 +153,7 @@ export const STAT_UPGRADE_POOL: StatUpgrade[] = [
     type: 'stat_boost',
     title: 'Sharper Furniture',
     description: 'Increase damage of Stub Toe by 5 and reduce its cooldown by 0.5s.',
+    icon: '🛋️',
     apply: (actions: PlayerActionState[]): PlayerActionState[] => {
         const newActions = deepCopy(actions);
         const stubToe = newActions.find(a => a.id === 'stub_toe');
@@ -158,6 +169,7 @@ export const STAT_UPGRADE_POOL: StatUpgrade[] = [
     type: 'stat_boost',
     title: 'Glass Bones',
     description: 'All your actions deal 20% more damage.',
+    icon: '🦴',
     apply: (actions: PlayerActionState[]): PlayerActionState[] => {
       return actions.map(action => ({
         ...action,
@@ -170,6 +182,7 @@ export const STAT_UPGRADE_POOL: StatUpgrade[] = [
     type: 'stat_boost',
     title: 'Lightning Reflexes',
     description: 'Reduce cooldown of all actions by another 15%.',
+    icon: '🏃',
     apply: (actions: PlayerActionState[]): PlayerActionState[] => {
         return actions.map(action => ({
             ...action,
@@ -177,6 +190,52 @@ export const STAT_UPGRADE_POOL: StatUpgrade[] = [
         }));
     }
   },
+];
+
+export const HEALER_STUN_UPGRADE_POOL: HealerStunUpgrade[] = [
+    {
+        id: 'stun_duration_1',
+        type: 'healer_stun_upgrade',
+        title: 'Longer Stun',
+        description: 'Increase the duration of your healer stun by 0.5 seconds.',
+        stat: 'duration',
+        amount: 0.5,
+        icon: '⏳',
+    },
+    {
+        id: 'instability_gain_1',
+        type: 'healer_stun_upgrade',
+        title: 'Volatile Actions',
+        description: 'Your actions generate 25% more Instability.',
+        stat: 'instability_gain',
+        amount: 1.25, // Multiplier
+        icon: '💥',
+    }
+];
+
+
+export const CONSUMABLE_POOL: Omit<Consumable, 'instanceId'>[] = [
+    {
+        id: 'poison_vial',
+        name: 'Vial of Poison',
+        icon: '☠️',
+        description: 'Drink this to deal 25 damage to yourself.',
+        effect: { type: 'instant_damage', amount: 25 }
+    },
+    {
+        id: 'cooldown_coffee',
+        name: 'Cooldown Coffee',
+        icon: '☕',
+        description: 'Reduces all ability cooldowns by 3 seconds.',
+        effect: { type: 'cooldown_reduction', amount: 3 }
+    },
+    {
+        id: 'mystery_flask',
+        name: 'Mystery Flask',
+        icon: '❓',
+        description: 'Who knows what this does? Deals between 5 and 50 damage.',
+        effect: { type: 'instant_damage', amount: 0 } // Amount will be randomized on use
+    }
 ];
 
 // --- Level Generation ---

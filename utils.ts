@@ -12,3 +12,13 @@ export const deepCopy = <T,>(obj: T): T => {
   }
   return newObj;
 };
+
+// Function to get N random unique elements from an array
+export const getRandomElements = <T,>(arr: T[], n: number): T[] => {
+    if (n > arr.length) {
+        console.warn("Requested more elements than available in the array.");
+        n = arr.length;
+    }
+    const shuffled = [...arr].sort(() => 0.5 - Math.random());
+    return shuffled.slice(0, n);
+}
