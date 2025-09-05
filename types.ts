@@ -49,6 +49,9 @@ export interface PlayerAction {
   minLevel: number;
   baseCost: number;
   rarity: Rarity;
+  stunChance?: number; // For Short Circuit
+  healerStunDuration?: number; // For Short Circuit
+  damageScalingOnMissingHp?: number; // For Painful Meditation
 }
 
 export interface PlayerActionState extends PlayerAction {
@@ -79,7 +82,9 @@ export interface Healer {
 
 export type ConsumableEffect = 
   | { type: 'STUN_ALL_HEALERS'; duration: number }
-  | { type: 'APPLY_SELF_DOT'; dot: DotEffect };
+  | { type: 'APPLY_SELF_DOT'; dot: DotEffect }
+  | { type: 'REDUCE_HEALING'; reductionPercent: number; duration: number }
+  | { type: 'DAMAGE_AND_DOT'; damage: number; dot: DotEffect };
 
 export interface Consumable {
   id: string;

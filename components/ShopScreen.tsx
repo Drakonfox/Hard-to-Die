@@ -19,10 +19,10 @@ const getCategoryStyles = (category: ShopItemCategory): string => {
 
 
 const ShopItemCard: React.FC<{ item: ShopItem, store: GameStore }> = ({ item, store }) => {
-    const { ragePoints, buyShopItem, consumables } = store;
+    const { ragePoints, buyShopItem, consumables, pendingShopPurchase } = store;
     const canAfford = ragePoints >= item.cost;
     
-    let isDisabled = !canAfford;
+    let isDisabled = !canAfford || !!pendingShopPurchase;
     let buttonText = 'Acquista';
 
     if (item.type === 'action' && item.owned) {
@@ -79,6 +79,52 @@ const ShopItemCard: React.FC<{ item: ShopItem, store: GameStore }> = ({ item, st
     )
 }
 
+const ReplaceActionModal: React.FC<{ store: GameStore }> = observer(({ store }) => {
+    const pendingItem = store.pendingShopPurchase;
+    if (!pendingItem || pendingItem.type !== 'action') return null;
+    
+    const newAction = pendingItem.payload as PlayerAction;
+
+    return (
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center z-50 animate-fadeIn">
+            <div className="w-full max-w-3xl bg-slate-800 p-8 rounded-xl border-2 border-slate-700 shadow-2xl">
+                <h2 className="text-4xl font-bold text-center text-yellow-400 mb-4">Slot Azioni Pieno</h2>
+                <p className="text-center text-slate-300 mb-2">Stai per acquistare:</p>
+                <div className="text-center bg-slate-900 p-3 rounded-lg mb-6 border border-slate-600">
+                    <h3 className="text-2xl font-bold text-cyan-400">{newAction.name} <span className="text-4xl">{newAction.icon}</span></h3>
+                    <p className="text-slate-400 text-sm">{newAction.description}</p>
+                </div>
+                <p className="text-center text-slate-300 mb-4">Scegli un'azione da rimpiazzare tra quelle che possiedi:</p>
+
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                    {store.playerActions.map(action => (
+                        <button 
+                            key={action.id}
+                            onClick={() => store.confirmActionReplacement(action.id)}
+                            className="flex flex-col items-center justify-center p-4 bg-slate-700 rounded-lg border-2 border-slate-600 hover:border-red-500 hover:bg-slate-600 transition-all h-full"
+                            title={`Rimpiazza ${action.name}`}
+                        >
+                             <span className="text-5xl mb-2">{action.icon}</span>
+                             <h4 className="font-bold text-slate-100 text-center">{action.name}</h4>
+                             <p className="text-xs text-slate-400">Lvl {action.level}</p>
+                        </button>
+                    ))}
+                </div>
+
+                <div className="text-center">
+                    <button
+                        onClick={store.cancelActionReplacement}
+                        className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg text-lg transition-transform transform hover:scale-105"
+                    >
+                        Annulla Acquisto
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+});
+
+
 const ShopScreen: React.FC<ShopScreenProps> = observer(({ store }) => {
   const buttonText = store.levelData === null 
     ? 'Inizia Livello 1' 
@@ -88,56 +134,59 @@ const ShopScreen: React.FC<ShopScreenProps> = observer(({ store }) => {
   const consumableItems = store.shopItems.filter(item => item.type === 'consumable');
 
   return (
-    <div className="w-full max-w-6xl text-center animate-fadeIn">
-      <h1 className="text-6xl font-bold text-yellow-400 mb-4">Il Negozio della Sofferenza</h1>
-      <p className="text-xl text-slate-300 mb-8">Spendi i tuoi Punti Rabbia (PR) per sbloccare nuovi modi di morire.</p>
-      
-      <div className="p-4 bg-slate-900/50 rounded-lg mb-8 border border-slate-700">
-          <h2 className="text-3xl font-bold text-white">I tuoi Punti Rabbia: <span className="font-mono text-yellow-300">{store.ragePoints}</span></h2>
-      </div>
+    <>
+      <ReplaceActionModal store={store} />
+      <div className={`w-full max-w-6xl text-center animate-fadeIn transition-all duration-300 ${store.pendingShopPurchase ? 'pointer-events-none blur-sm' : ''}`}>
+        <h1 className="text-6xl font-bold text-yellow-400 mb-4">Il Negozio della Sofferenza</h1>
+        <p className="text-xl text-slate-300 mb-8">Spendi i tuoi Punti Rabbia (PR) per sbloccare nuovi modi di morire.</p>
+        
+        <div className="p-4 bg-slate-900/50 rounded-lg mb-8 border border-slate-700">
+            <h2 className="text-3xl font-bold text-white">I tuoi Punti Rabbia: <span className="font-mono text-yellow-300">{store.ragePoints}</span></h2>
+        </div>
 
-      <div className="grid lg:grid-cols-2 gap-8 mb-8">
-        {/* Actions Column */}
-        <section>
-          <h2 className="text-3xl font-bold text-slate-100 mb-4 text-left">Azioni e Potenziamenti</h2>
-          <div className="grid md:grid-cols-2 gap-4">
-            {actionItems.map(item => (
-                <ShopItemCard 
-                    key={item.id} 
-                    item={item} 
-                    store={store}
-                />
-            ))}
-            {actionItems.length === 0 && <p className="text-slate-400 md:col-span-2">Non ci sono più oggetti da acquistare.</p>}
-          </div>
-        </section>
-
-        {/* Consumables Column */}
-        <section>
-            <h2 className="text-3xl font-bold text-slate-100 mb-4 text-left">Consumabili</h2>
+        <div className="grid lg:grid-cols-2 gap-8 mb-8">
+          {/* Actions Column */}
+          <section>
+            <h2 className="text-3xl font-bold text-slate-100 mb-4 text-left">Azioni e Potenziamenti</h2>
             <div className="grid md:grid-cols-2 gap-4">
-                {consumableItems.map(item => (
-                    <ShopItemCard 
-                        key={item.id} 
-                        item={item} 
-                        store={store}
-                    />
-                ))}
-                {consumableItems.length === 0 && <p className="text-slate-400 md:col-span-2">Nessun consumabile disponibile.</p>}
+              {actionItems.map(item => (
+                  <ShopItemCard 
+                      key={item.id} 
+                      item={item} 
+                      store={store}
+                  />
+              ))}
+              {actionItems.length === 0 && <p className="text-slate-400 md:col-span-2">Non ci sono più oggetti da acquistare.</p>}
             </div>
-        </section>
-      </div>
+          </section>
 
-      <button
-        onClick={store.proceedFromShop}
-        disabled={store.playerActions.length === 0}
-        className="bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-3 px-8 rounded-lg text-2xl transition-transform transform hover:scale-105
-                   disabled:bg-slate-600 disabled:cursor-not-allowed"
-        title={store.playerActions.length === 0 ? 'Devi acquistare almeno un\'azione per iniziare' : ''}
-      >
-        {buttonText}
-      </button>
-    </div>
+          {/* Consumables Column */}
+          <section>
+              <h2 className="text-3xl font-bold text-slate-100 mb-4 text-left">Consumabili</h2>
+              <div className="grid md:grid-cols-2 gap-4">
+                  {consumableItems.map(item => (
+                      <ShopItemCard 
+                          key={item.id} 
+                          item={item} 
+                          store={store}
+                      />
+                  ))}
+                  {consumableItems.length === 0 && <p className="text-slate-400 md:col-span-2">Nessun consumabile disponibile.</p>}
+              </div>
+          </section>
+        </div>
+
+        <button
+          onClick={store.proceedFromShop}
+          disabled={store.playerActions.length === 0}
+          className="bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-3 px-8 rounded-lg text-2xl transition-transform transform hover:scale-105
+                    disabled:bg-slate-600 disabled:cursor-not-allowed"
+          title={store.playerActions.length === 0 ? 'Devi acquistare almeno un\'azione per iniziare' : ''}
+        >
+          {buttonText}
+        </button>
+      </div>
+    </>
   );
 });
 

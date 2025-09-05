@@ -1,7 +1,7 @@
 // FIX: Implement the ActionButton component for player actions.
 import React from 'react';
 import { PlayerActionState } from '../types';
-import { RARITY_DATA } from '../constants';
+import { RARITY_DATA, MAX_ACTION_LEVEL } from '../constants';
 
 interface ActionButtonProps {
   action: PlayerActionState;
@@ -33,7 +33,7 @@ const ActionButton: React.FC<ActionButtonProps> = ({ action, onUse, disabled }) 
                  flex flex-col group`}
     >
       <div className="absolute top-2 right-2 bg-blue-600 text-white text-xs font-bold px-2 py-0.5 rounded-full z-10">
-          Lvl {action.level}
+          {action.level >= MAX_ACTION_LEVEL ? 'Lvl MAX' : `Lvl ${action.level}`}
       </div>
 
       <div className="flex-grow">
@@ -53,11 +53,20 @@ const ActionButton: React.FC<ActionButtonProps> = ({ action, onUse, disabled }) 
             {action.instabilityGain > 0 && <StatGridItem label="Instability" value={`+${action.instabilityGain}`} colorClass="text-fuchsia-400" />}
             
             {action.stunDuration && <StatGridItem label="Self Stun" value={`${action.stunDuration}s`} colorClass="text-yellow-400" />}
+            
+            {action.damageScalingOnMissingHp && <StatGridItem label="Danno Extra" value={`+${action.damageScalingOnMissingHp} x HP mancanti`} colorClass="text-rose-400" />}
 
             {action.dot && (
                 <div className="col-span-2 flex justify-between items-baseline">
                     <span className="text-slate-400">DoT:</span>
                     <span className="font-bold font-mono text-purple-400">{action.dot.damage} over {action.dot.duration}s</span>
+                </div>
+            )}
+            
+            {action.stunChance && action.healerStunDuration && (
+                <div className="col-span-2 flex justify-between items-baseline">
+                    <span className="text-slate-400">Stun Chance:</span>
+                    <span className="font-bold font-mono text-yellow-400">{action.stunChance * 100}% per {action.healerStunDuration}s</span>
                 </div>
             )}
         </div>

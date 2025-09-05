@@ -6,12 +6,11 @@ import ActionButton from './ActionButton';
 import HealerDisplay from './HealerDisplay';
 import ConsumableBar from './ConsumableBar';
 import type { GameStore } from '../store';
+import { MAX_INSTABILITY } from '../constants';
 
 interface GameProps {
   store: GameStore;
 }
-
-const MAX_INSTABILITY = 100;
 
 const Game: React.FC<GameProps> = observer(({ store }) => {
   // The component now primarily renders state from the store.
@@ -49,7 +48,9 @@ const Game: React.FC<GameProps> = observer(({ store }) => {
           activeDots={store.activeDots} 
           activeHots={store.activeHots} 
           instability={store.instability} 
-          maxInstability={MAX_INSTABILITY} 
+          maxInstability={MAX_INSTABILITY}
+          healingReduction={store.healingReduction}
+          instabilityTriggered={store.instabilityTriggered}
       />
       
       <ConsumableBar consumables={store.consumables} onUse={store.useConsumable} />
@@ -62,7 +63,7 @@ const Game: React.FC<GameProps> = observer(({ store }) => {
               <ActionButton 
                 key={action.id} 
                 action={action} 
-                onUse={store.useAction}
+                onUse={() => store.useAction(action)}
                 disabled={action.currentCooldown > 0 || store.stunTimer > 0 || store.gameState === 'level-won'} 
               />
             ))}

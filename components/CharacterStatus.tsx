@@ -10,9 +10,13 @@ interface CharacterStatusProps {
   activeHots: ActiveHotState[];
   instability: number;
   maxInstability: number;
+  healingReduction: { duration: number, reductionPercent: number };
+  instabilityTriggered: boolean;
 }
 
-const CharacterStatus: React.FC<CharacterStatusProps> = ({ hp, maxHp, shield, activeDots, activeHots, instability, maxInstability }) => {
+type EffectColor = 'red' | 'green' | 'purple';
+
+const CharacterStatus: React.FC<CharacterStatusProps> = ({ hp, maxHp, shield, activeDots, activeHots, instability, maxInstability, healingReduction, instabilityTriggered }) => {
   const hpPercentage = (hp / maxHp) * 100;
   const shieldPercentage = shield ? (shield.amount / maxHp) * 100 : 0;
   const instabilityPercentage = (instability / maxInstability) * 100;
@@ -22,6 +26,37 @@ const CharacterStatus: React.FC<CharacterStatusProps> = ({ hp, maxHp, shield, ac
     if (hpPercentage > 25) return 'bg-yellow-500';
     return 'bg-red-500';
   };
+  
+  const allEffects = [
+    ...(healingReduction.duration > 0 ? [{
+        id: 'healing_reduction',
+        icon: '🧪',
+        duration: healingReduction.duration,
+        color: 'purple' as EffectColor,
+        title: `Cure ricevute ridotte del ${healingReduction.reductionPercent * 100}%`
+    }] : []),
+    ...activeDots.map(dot => ({
+        id: dot.id,
+        icon: dot.icon,
+        duration: dot.remainingDuration,
+        color: 'red' as EffectColor,
+        title: `${dot.id.charAt(0).toUpperCase() + dot.id.slice(1)}`
+    })),
+    ...activeHots.map(hot => ({
+        id: hot.id,
+        icon: hot.icon,
+        duration: hot.remainingDuration,
+        color: 'green' as EffectColor,
+        title: `${hot.id.charAt(0).toUpperCase() + hot.id.slice(1)}`
+    }))
+  ];
+
+  const colorClasses: Record<EffectColor, { border: string, text: string }> = {
+      red: { border: 'border-red-500/50', text: 'text-red-300' },
+      green: { border: 'border-green-500/50', text: 'text-green-300' },
+      purple: { border: 'border-purple-500/50', text: 'text-purple-300' },
+  };
+
 
   return (
     <div className="w-full bg-slate-800/50 backdrop-blur-sm rounded-xl p-4 border-2 border-slate-700 space-y-4">
@@ -49,7 +84,7 @@ const CharacterStatus: React.FC<CharacterStatusProps> = ({ hp, maxHp, shield, ac
       </div>
       
       {/* Instability Section */}
-      <div>
+      <div className={instabilityTriggered ? 'animate-instability-burst' : ''}>
         <div className="flex justify-between items-baseline mb-1">
             <h3 className="font-bold text-purple-300">Instability</h3>
             <p className="font-mono text-purple-300">{Math.floor(instability)} / {maxInstability}</p>
@@ -64,23 +99,15 @@ const CharacterStatus: React.FC<CharacterStatusProps> = ({ hp, maxHp, shield, ac
 
       {/* Effects Section */}
       <div className="flex items-center flex-wrap gap-2 min-h-[28px]">
-        {(activeDots.length > 0 || activeHots.length > 0) ? (
-            <>
-                {activeDots.map(dot => (
-                    <div key={dot.id} className="flex items-center gap-2 bg-slate-900/70 px-3 py-1 rounded-full border border-red-500/50" title={`${dot.id.charAt(0).toUpperCase() + dot.id.slice(1)}`}>
-                        <span className="text-lg">{dot.icon}</span>
-                        <span className="text-sm font-mono text-red-300">{dot.remainingDuration.toFixed(1)}s</span>
-                    </div>
-                ))}
-                {activeHots.map(hot => (
-                    <div key={hot.id} className="flex items-center gap-2 bg-slate-900/70 px-3 py-1 rounded-full border border-green-500/50" title={`${hot.id.charAt(0).toUpperCase() + hot.id.slice(1)}`}>
-                        <span className="text-lg">{hot.icon}</span>
-                        <span className="text-sm font-mono text-green-300">{hot.remainingDuration.toFixed(1)}s</span>
-                    </div>
-                ))}
-            </>
+        {allEffects.length > 0 ? (
+          allEffects.map(effect => (
+              <div key={effect.id} className={`flex items-center gap-2 bg-slate-900/70 px-3 py-1 rounded-full border ${colorClasses[effect.color].border}`} title={effect.title}>
+                  <span className="text-lg">{effect.icon}</span>
+                  <span className={`text-sm font-mono ${colorClasses[effect.color].text}`}>{effect.duration.toFixed(1)}s</span>
+              </div>
+          ))
         ) : (
-            <p className="text-sm text-slate-500">No active effects.</p>
+          <p className="text-sm text-slate-500">No active effects.</p>
         )}
       </div>
     </div>
