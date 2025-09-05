@@ -1,133 +1,114 @@
-// FIX: Define all the necessary types for the application.
-export enum GameStatus {
-  StartScreen,
-  Playing,
-  LevelComplete,
-  GameOver,
-  ReplacingAction,
+// types.ts
+
+export type Difficulty = 'Easy' | 'Medium' | 'Hard';
+
+export interface ShieldState {
+  amount: number;
 }
 
-export enum Difficulty {
-  Easy = 'Easy',
-  Normal = 'Normal',
-  Hard = 'Hard',
+export interface ActiveEffectState {
+  id: string;
+  icon: string;
+  remainingDuration: number;
+}
+
+export interface ActiveDotState extends ActiveEffectState {
+  damage: number;
+}
+
+export interface ActiveHotState extends ActiveEffectState {
+  heal: number;
 }
 
 export interface DotEffect {
-  id: string; // e.g., 'bleed', 'poison'
-  icon: string;
+  id: string;
   damage: number;
   duration: number;
-  ticks: number;
+  icon: string;
 }
 
-export interface PlayerActionState {
+export interface HotEffect {
+  id: string;
+  heal: number;
+  duration: number;
+  icon: string;
+}
+
+export interface PlayerAction {
   id: string;
   name: string;
+  description: string;
   icon: string;
   damage: number;
   cooldown: number;
-  currentCooldown: number;
-  description: string;
-  dot?: DotEffect;
-  stunDuration?: number; // in seconds
   instabilityGain: number;
+  stunDuration?: number;
+  dot?: DotEffect;
 }
 
-export interface ActiveDotState {
-  id:string;
-  icon: string;
-  remainingDuration: number;
-  damagePerTick: number;
-  interval: number;
-  timeToNextTick: number;
+export interface PlayerActionState extends PlayerAction {
+  currentCooldown: number;
 }
-
-export interface ActiveHotState {
-  id: string;
-  icon: string;
-  remainingDuration: number;
-  healPerTick: number;
-  interval: number;
-  timeToNextTick: number;
-}
-
-export interface ShieldState {
-    amount: number;
-    // Potentially add duration in the future
-}
-
-export interface StatUpgrade {
-  id: string;
-  type: 'stat_boost';
-  title: string;
-  description: string;
-  icon: string;
-  apply: (actions: PlayerActionState[]) => PlayerActionState[];
-}
-
-export interface NewActionUpgrade {
-  id: string;
-  type: 'new_action';
-  action: PlayerActionState;
-}
-
-export interface HealerStunUpgrade {
-  id: string;
-  type: 'healer_stun_upgrade';
-  title: string;
-  description: string;
-  icon: string;
-  stat: 'duration' | 'instability_gain';
-  amount: number; // The value to add or multiply
-}
-
-export type Upgrade = StatUpgrade | NewActionUpgrade | HealerStunUpgrade;
-
-
-export type HealerAbilityType = 'direct_heal' | 'cleanse' | 'shield' | 'regeneration';
 
 export interface HealerAbility {
-    id: string;
-    type: HealerAbilityType;
-    name: string;
-    icon: string;
-    amount?: number; // for heal, shield, regen
-    duration?: number; // for shield, regen
-    ticks?: number; // for regen
-    cooldown: number;
-    timeToNextUse: number;
+  id: string;
+  name: string;
+  icon: string;
+  cooldown: number;
+  timeToNextUse: number;
+  healAmount?: number;
+  hot?: HotEffect;
+  shieldAmount?: number;
+  dispel?: boolean;
 }
 
 export interface Healer {
   id: string;
   name: string;
   icon: string;
+  maxHp: number;
   abilities: HealerAbility[];
   stunTimer?: number;
 }
 
-export interface Level {
+export type ConsumableEffect = 
+  | { type: 'STUN_ALL_HEALERS'; duration: number }
+  | { type: 'APPLY_SELF_DOT'; dot: DotEffect };
+
+export interface Consumable {
+  id: string;
+  name: string;
+  icon: string;
+  description: string;
+  effect: ConsumableEffect;
+  quantity: number;
+}
+
+export interface LevelData {
   level: number;
   characterMaxHp: number;
-  timer: number; // in seconds
+  timeLimit: number;
   healers: Healer[];
 }
 
-export interface EventLogMessage {
-  id: number;
-  message: string;
-  type: 'damage' | 'heal' | 'effect' | 'info' | 'shield';
+export type GameState = 'start' | 'playing' | 'level-won' | 'game-over' | 'shop';
+
+export type ShopItemCategory = 'Azione' | 'Potenziamento' | 'Consumabile';
+
+export interface ShopItem {
+  id: string;
+  name: string;
+  description: string;
+  cost: number;
+  category: ShopItemCategory;
+  type: 'action' | 'consumable' | 'upgrade';
+  payload: PlayerAction | Omit<Consumable, 'quantity'>;
+  owned?: boolean; // Only for actions/upgrades
 }
 
-export interface Consumable {
-    id: string;
-    instanceId: number; // To differentiate between multiple items of the same type
-    name: string;
-    icon: string;
-    description: string;
-    effect: {
-        type: 'instant_damage' | 'cooldown_reduction';
-        amount: number;
-    }
+export interface LevelSummaryStats {
+    damageBonus: number;
+    timeBonus: number;
+    overkillBonus: number;
+    total: number;
 }

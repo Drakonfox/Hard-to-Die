@@ -15,7 +15,8 @@ const HealerDisplay: React.FC<HealerDisplayProps> = ({ healers }) => {
               
               <div className={`transition-opacity duration-300 ${isStunned ? 'opacity-25 pointer-events-none' : ''}`}>
                 <div className="flex items-center mb-4">
-                    <span className="text-5x1 mr-4">{healer.icon}</span>
+                    {/* FIX: Corrected typo from text-5x1 to text-5xl */}
+                    <span className="text-5xl mr-4">{healer.icon}</span>
                     <span className="font-bold text-xl text-slate-100">{healer.name}</span>
                 </div>
                 <div className="space-y-2">

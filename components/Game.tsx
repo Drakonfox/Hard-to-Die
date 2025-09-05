@@ -1,340 +1,82 @@
 // FIX: Implement the main Game component with game loop and state management.
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-// FIX: Removed duplicate import of ActiveHotState.
-import { Level, PlayerActionState, Healer, EventLogMessage, ActiveDotState, ShieldState, ActiveHotState, HealerAbility, Consumable } from '../types';
+import React, { useEffect } from 'react';
+import { observer } from 'mobx-react-lite';
 import CharacterStatus from './CharacterStatus';
 import ActionButton from './ActionButton';
 import HealerDisplay from './HealerDisplay';
-import EventLog from './EventLog';
 import ConsumableBar from './ConsumableBar';
+import type { GameStore } from '../store';
 
 interface GameProps {
-  levelData: Level;
-  playerActions: PlayerActionState[];
-  setPlayerActions: React.Dispatch<React.SetStateAction<PlayerActionState[]>>;
-  onLevelComplete: () => void;
-  onGameOver: (win: boolean) => void;
-  onTakeDamage: () => void;
-  healerStunDuration: number;
-  instabilityGainMultiplier: number;
+  store: GameStore;
 }
 
-const GAME_TICK_MS = 100;
 const MAX_INSTABILITY = 100;
-const VICTORY_SCREEN_DURATION_MS = 3000;
 
-const Game: React.FC<GameProps> = ({ levelData, playerActions, setPlayerActions, onLevelComplete, onGameOver, onTakeDamage, healerStunDuration, instabilityGainMultiplier }) => {
-  const [hp, setHp] = useState(levelData.characterMaxHp);
-  const [shield, setShield] = useState<ShieldState | null>(null);
-  const [timer, setTimer] = useState(levelData.timer);
-  const [healers, setHealers] = useState<Healer[]>(() => 
-    levelData.healers.map(h => ({...h, stunTimer: 0}))
-  );
-  const [log, setLog] = useState<EventLogMessage[]>([]);
-  const logIdCounter = useRef(0);
-  const prevHpRef = useRef(hp);
+const Game: React.FC<GameProps> = observer(({ store }) => {
+  // The component now primarily renders state from the store.
+  // The game loop is handled within the store.
 
-  const [stunTimer, setStunTimer] = useState(0);
-  const [activeDots, setActiveDots] = useState<ActiveDotState[]>([]);
-  const [activeHots, setActiveHots] = useState<ActiveHotState[]>([]);
-  const [consumables, setConsumables] = useState<Consumable[]>([]);
-  
-  const [instability, setInstability] = useState(0);
-  const [isLevelWon, setIsLevelWon] = useState(false);
-
-
-  // Effect to trigger damage animation
+  // Effect to clean up the game loop when the component unmounts
   useEffect(() => {
-    if (hp < prevHpRef.current) {
-      onTakeDamage();
-    }
-    prevHpRef.current = hp;
-  }, [hp, onTakeDamage]);
+    return () => {
+      store.stopGameLoop();
+    };
+  }, [store]);
 
-  const addLog = useCallback((message: string, type: EventLogMessage['type']) => {
-    setLog(prevLog => [{ id: logIdCounter.current++, message, type }, ...prevLog.slice(0, 49)]);
-  }, []);
-
-  // Effect to handle instability meter discharge
-  useEffect(() => {
-    if (instability >= MAX_INSTABILITY) {
-      setHealers(prevHealers => {
-        if (prevHealers.length === 0) return prevHealers;
-        
-        const notStunnedHealers = prevHealers.filter(h => !h.stunTimer || h.stunTimer <= 0);
-        
-        if (notStunnedHealers.length > 0) {
-            const targetHealer = notStunnedHealers[Math.floor(Math.random() * notStunnedHealers.length)];
-            addLog(`An energy surge stunned ${targetHealer.name} for ${healerStunDuration.toFixed(1)}s!`, 'effect');
-            return prevHealers.map(h => 
-                h.id === targetHealer.id ? { ...h, stunTimer: healerStunDuration } : h
-            );
-        }
-        // If all are stunned, do nothing
-        return prevHealers;
-      });
-      setInstability(0);
-    }
-  }, [instability, addLog, healerStunDuration]);
-  
-  const takeDamage = useCallback((damageAmount: number) => {
-    let damageToDeal = damageAmount;
-    setShield(prevShield => {
-        if (prevShield && prevShield.amount > 0) {
-            const shieldDamage = Math.min(damageToDeal, prevShield.amount);
-            damageToDeal -= shieldDamage;
-            addLog(`Your shield absorbed ${shieldDamage.toFixed(0)} damage.`, 'shield');
-            const newShieldAmount = prevShield.amount - shieldDamage;
-            return newShieldAmount > 0 ? { ...prevShield, amount: newShieldAmount } : null;
-        }
-        return prevShield;
-    });
-
-    if (damageToDeal > 0) {
-        setHp(prevHp => prevHp - damageToDeal);
-    }
-  }, [addLog]);
-
-  // Game loop
-  useEffect(() => {
-    if (isLevelWon) return; // Stop the game loop if level is won
-
-    const interval = setInterval(() => {
-      const timeDelta = GAME_TICK_MS / 1000;
-
-      // Update timer & stun timer
-      setTimer(prev => Math.max(0, prev - timeDelta));
-      setStunTimer(prev => Math.max(0, prev - timeDelta));
-
-      // Update player action cooldowns
-      setPlayerActions(prevActions => 
-        prevActions.map(action => ({
-          ...action,
-          currentCooldown: Math.max(0, action.currentCooldown - timeDelta)
-        }))
-      );
-
-      // Update DoTs and apply damage
-      setActiveDots(prevDots => {
-        const stillActiveDots = [];
-        for (const dot of prevDots) {
-            let newTimeToNextTick = dot.timeToNextTick - timeDelta;
-            if (newTimeToNextTick <= 0) {
-                takeDamage(dot.damagePerTick);
-                addLog(`You take ${dot.damagePerTick.toFixed(0)} damage from ${dot.id}.`, 'damage');
-                newTimeToNextTick += dot.interval;
-            }
-            const newRemainingDuration = dot.remainingDuration - timeDelta;
-            if (newRemainingDuration > 0) {
-                stillActiveDots.push({ ...dot, timeToNextTick: newTimeToNextTick, remainingDuration: newRemainingDuration });
-            }
-        }
-        return stillActiveDots;
-      });
-
-      // Update HoTs and apply healing
-      setActiveHots(prevHots => {
-        const stillActiveHots = [];
-        for (const hot of prevHots) {
-            let newTimeToNextTick = hot.timeToNextTick - timeDelta;
-            if (newTimeToNextTick <= 0) {
-                setHp(prevHp => Math.min(levelData.characterMaxHp, prevHp + hot.healPerTick));
-                addLog(`You regenerate ${hot.healPerTick.toFixed(0)} HP from ${hot.id}.`, 'heal');
-                newTimeToNextTick += hot.interval;
-            }
-            const newRemainingDuration = hot.remainingDuration - timeDelta;
-            if (newRemainingDuration > 0) {
-                stillActiveHots.push({ ...hot, timeToNextTick: newTimeToNextTick, remainingDuration: newRemainingDuration });
-            }
-        }
-        return stillActiveHots;
-      });
-
-      // Update healers and use abilities
-        setHealers(prevHealers => prevHealers.map(healer => {
-            const newStunTimer = Math.max(0, (healer.stunTimer || 0) - timeDelta);
-
-            // If healer is stunned, just update its timer and do nothing else.
-            if (newStunTimer > 0) {
-                return { ...healer, stunTimer: newStunTimer };
-            }
-
-            const newAbilities = healer.abilities.map(ability => {
-                let newTimeToNextUse = ability.timeToNextUse - timeDelta;
-                if (newTimeToNextUse <= 0) {
-                    // Ability triggers
-                    newTimeToNextUse = ability.cooldown;
-                    switch(ability.type) {
-                        case 'direct_heal':
-                            setHp(prevHp => {
-                                const newHp = Math.min(levelData.characterMaxHp, prevHp + (ability.amount || 0));
-                                if (newHp > prevHp) {
-                                    addLog(`${healer.name}'s ${ability.name} healed you for ${ability.amount} HP.`, 'heal');
-                                }
-                                return newHp;
-                            });
-                            break;
-                        case 'cleanse':
-                            if (activeDots.length > 0) {
-                                addLog(`${healer.name}'s ${ability.name} removed your harmful effects.`, 'effect');
-                                setActiveDots([]);
-                            }
-                            break;
-                        case 'shield':
-                            addLog(`${healer.name}'s ${ability.name} grants you a ${ability.amount} HP shield.`, 'shield');
-                            setShield(prev => ({ amount: (prev?.amount || 0) + (ability.amount || 0) }));
-                            break;
-                        case 'regeneration':
-                            addLog(`${healer.name}'s ${ability.name} causes you to regenerate health.`, 'heal');
-                            const newHot: ActiveHotState = {
-                                id: ability.id,
-                                icon: ability.icon,
-                                remainingDuration: ability.duration || 5,
-                                healPerTick: (ability.amount || 10) / (ability.ticks || 5),
-                                interval: (ability.duration || 5) / (ability.ticks || 5),
-                                timeToNextTick: (ability.duration || 5) / (ability.ticks || 5),
-                            };
-                            setActiveHots(prev => [...prev, newHot]);
-                            break;
-                    }
-                }
-                return { ...ability, timeToNextUse: newTimeToNextUse };
-            });
-            return { ...healer, abilities: newAbilities, stunTimer: newStunTimer };
-        }));
-
-    }, GAME_TICK_MS);
-
-    return () => clearInterval(interval);
-  }, [addLog, levelData.characterMaxHp, setPlayerActions, takeDamage, activeDots.length, isLevelWon]);
-
-  // Check for win/loss conditions
-  useEffect(() => {
-    if (hp <= 0 && !isLevelWon) {
-      setIsLevelWon(true);
-      addLog('You have successfully died!', 'info');
-      setTimeout(() => {
-        onLevelComplete();
-      }, VICTORY_SCREEN_DURATION_MS);
-    } else if (timer <= 0 && !isLevelWon) {
-      addLog('Time is up! You failed to die.', 'info');
-      onGameOver(false);
-    }
-  }, [hp, timer, onLevelComplete, onGameOver, addLog, isLevelWon]);
-
-  const handleUseAction = useCallback((action: PlayerActionState) => {
-    if (action.currentCooldown > 0 || stunTimer > 0 || isLevelWon) return;
-
-    if(action.damage > 0) {
-      takeDamage(action.damage);
-      addLog(`You used '${action.name}' and dealt ${action.damage} damage to yourself.`, 'damage');
-    }
-
-    setInstability(prev => prev + (action.instabilityGain * instabilityGainMultiplier));
-
-    if (action.stunDuration) {
-        setStunTimer(action.stunDuration);
-        addLog(`You stunned yourself for ${action.stunDuration}s.`, 'effect');
-    }
-
-    if (action.dot) {
-        const newDot: ActiveDotState = {
-            id: action.dot.id,
-            icon: action.dot.icon,
-            remainingDuration: action.dot.duration,
-            damagePerTick: action.dot.damage / action.dot.ticks,
-            interval: action.dot.duration / action.dot.ticks,
-            timeToNextTick: action.dot.duration / action.dot.ticks,
-        };
-        setActiveDots(prevDots => [...prevDots, newDot]);
-        addLog(`You are now afflicted with ${action.dot.id}.`, 'effect');
-    }
-
-    setPlayerActions(prevActions => 
-      prevActions.map(a => 
-        a.id === action.id ? { ...a, currentCooldown: a.cooldown } : a
-      )
-    );
-    
-  }, [addLog, setPlayerActions, stunTimer, takeDamage, instabilityGainMultiplier, isLevelWon]);
-
-  const handleUseConsumable = useCallback((item: Consumable) => {
-    if (isLevelWon) return;
-    addLog(`You used ${item.name}.`, 'effect');
-    
-    switch (item.id) {
-        case 'poison_vial':
-            takeDamage(item.effect.amount);
-            addLog(`You take ${item.effect.amount} damage!`, 'damage');
-            break;
-        case 'cooldown_coffee':
-            setPlayerActions(prev => prev.map(action => ({
-                ...action,
-                currentCooldown: Math.max(0, action.currentCooldown - item.effect.amount),
-            })));
-            addLog(`Your cooldowns are reduced by ${item.effect.amount}s.`, 'info');
-            break;
-        case 'mystery_flask':
-            const damage = Math.floor(Math.random() * 46) + 5; // 5 to 50
-            takeDamage(damage);
-            addLog(`The flask contained a potent substance! You take ${damage} damage.`, 'damage');
-            break;
-    }
-
-    setConsumables(prev => prev.filter(c => c.instanceId !== item.instanceId));
-  }, [addLog, takeDamage, setPlayerActions, isLevelWon]);
+  if (!store.levelData) {
+    return <div>Loading level...</div>; // Placeholder
+  }
 
   return (
-    <div className="relative grid grid-cols-1 lg:grid-cols-3 gap-8 p-4 animate-fadeIn">
-      {stunTimer > 0 && (
+    <div className="relative w-full max-w-3xl mx-auto p-4 animate-fadeIn flex flex-col gap-6">
+      {store.stunTimer > 0 && (
           <div className="absolute inset-0 bg-slate-900/80 flex flex-col items-center justify-center z-50 rounded-lg">
             <h2 className="text-6xl font-bold text-yellow-400 animate-pulse">STUNNED</h2>
-            <p className="text-4xl font-mono text-white mt-4">{stunTimer.toFixed(1)}s</p>
+            <p className="text-4xl font-mono text-white mt-4">{store.stunTimer.toFixed(1)}s</p>
           </div>
       )}
-      {isLevelWon && (
-        <div className="absolute inset-0 bg-slate-900/90 flex flex-col items-center justify-center z-[60] rounded-lg animate-fadeIn">
-            <h2 className="text-6xl font-bold text-green-400">VITTORIA!</h2>
-            <p className="text-2xl text-slate-200 mt-4">Ce l'hai fatta a morire.</p>
-            <p className="text-slate-400 mt-2">Preparazione per il prossimo livello...</p>
-        </div>
-      )}
-      <div className="relative z-20 lg:col-span-2 flex flex-col gap-6">
-        <CharacterStatus hp={hp} maxHp={levelData.characterMaxHp} shield={shield} activeDots={activeDots} activeHots={activeHots} instability={instability} maxInstability={MAX_INSTABILITY} />
-        
-        <ConsumableBar consumables={consumables} onUse={handleUseConsumable} />
-        
-        <div>
-          <h2 className="text-2xl font-bold mb-4 text-center">Your Actions</h2>
-          <div className="max-w-xl mx-auto">
-            <div className="grid grid-cols-2 gap-4">
-              {playerActions.map(action => (
-                <ActionButton 
-                  key={action.id} 
-                  action={action} 
-                  onUse={handleUseAction}
-                  disabled={action.currentCooldown > 0 || stunTimer > 0 || isLevelWon} 
-                />
-              ))}
-            </div>
-          </div>
-        </div>
-        
-        <div>
-          <h2 className="text-2xl font-bold mb-4 text-center">Pesky Healers</h2>
-          <HealerDisplay healers={healers} />
-        </div>
+      
+      <div className="bg-slate-800 p-4 rounded-lg border border-slate-700 text-center">
+        <h2 className="text-xl font-bold text-slate-300">Tempo per Morire</h2>
+        <p className="text-5xl font-bold text-red-500">{store.timer.toFixed(1)}s</p>
       </div>
 
-      <div className="relative z-20 flex flex-col gap-4">
-        <div className="bg-slate-800 p-4 rounded-lg border border-slate-700 text-center">
-          <h2 className="text-xl font-bold text-slate-300">Time to Die</h2>
-          <p className="text-5xl font-bold text-red-500">{timer.toFixed(1)}s</p>
+      <CharacterStatus 
+          hp={store.hp} 
+          maxHp={store.levelData.characterMaxHp} 
+          shield={store.shield} 
+          activeDots={store.activeDots} 
+          activeHots={store.activeHots} 
+          instability={store.instability} 
+          maxInstability={MAX_INSTABILITY} 
+      />
+      
+      <ConsumableBar consumables={store.consumables} onUse={store.useConsumable} />
+      
+      <div>
+        <h2 className="text-2xl font-bold mb-4 text-center">Le Tue Azioni</h2>
+        <div className="max-w-xl mx-auto">
+          <div className="grid grid-cols-2 gap-4">
+            {store.playerActions.map(action => (
+              <ActionButton 
+                key={action.id} 
+                action={action} 
+                onUse={store.useAction}
+                disabled={action.currentCooldown > 0 || store.stunTimer > 0 || store.gameState === 'level-won'} 
+              />
+            ))}
+          </div>
         </div>
-        <EventLog log={log} />
       </div>
+      
+      <div>
+        <h2 className="text-2xl font-bold mb-4 text-center">Guaritori Fastidiosi</h2>
+        <HealerDisplay healers={store.healers} />
+      </div>
+
     </div>
   );
-};
+});
 
 export default Game;
